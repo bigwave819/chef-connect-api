@@ -10,12 +10,16 @@ import {
     updateProfile,
     getProfile
  } from '../controller/user.controller.js';
+ import ProtectedRoute from '../middleware/auth.middleware.js';
 
+
+router.post('/register', Register)
+router.post('/login', Login),
+
+router.use(ProtectedRoute);
 
 router.get('/:id', getProfile),
 router.delete('/:id', deleteProfile),
-router.post('/register', Register)
-router.post('/login', Login),
 router.put('/update/:id', updateProfile),
 router.post('/profile/create', createProfile)
 
