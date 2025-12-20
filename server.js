@@ -3,6 +3,7 @@ import { connectDB } from './src/config/db.js'
 import { ENV } from './src/config/env.js'
 import useRoutes from './src/routes/user.route.js'
 import cors from 'cors'
+import adminRoutes from './src/routes/admin.route.js'
 
 
 const app = express()
@@ -11,6 +12,7 @@ app.use(cors())
 
 
 app.use('/api/user', useRoutes)
+app.use('/api/admin', adminRoutes)
 
 connectDB()
 

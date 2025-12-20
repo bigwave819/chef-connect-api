@@ -2,6 +2,7 @@ import User from '../models/user.model.js'
 import jwtToken from '../utils/jwtToken.js'
 import bcrypt from 'bcryptjs'
 import Profile from '../models/profile.model.js'
+import cloudinary from '../config/cloudinary.js'
 
 
 export const Register = async (req, res) => {
@@ -76,6 +77,23 @@ export const createProfile = async (req, res) => {
             res.status(400).json({ message: 'All Fields are required' })
         }
 
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: "At least one image is required" });
+        }
+
+        if (req.files.length > 2) {
+            return res.status(400).json({ message: "Maximum 2 images allowed" });
+        }
+
+        const uploaderPromises = req.files.map((file) => {
+            return cloudinary.uploader.upload(file.path, {
+                folder: 'profiles'
+            })
+        });
+
+        const uploadResults = await Promise.all(uploaderPromises)
+        const imageUrls = uploadResults.map((result) => result.secure_url)
+
         const exists = await Profile.findOne({ user: user._id })
         if (exists) {
             return res.status(400).json({ message: "Profile already exists" })
@@ -83,7 +101,7 @@ export const createProfile = async (req, res) => {
 
         const profile = new Profile({
             user: user._id,
-            image,
+            image: imageUrls,
             phone,
             bio,
             email
@@ -104,17 +122,17 @@ export const createProfile = async (req, res) => {
 }
 
 export const getProfile = async (_, res) => {
-  try {
-    const profiles = await Profile.find().populate("user", "name email role")
+    try {
+        const profiles = await Profile.find().populate("user", "name email role")
 
-    if (profiles.length === 0) {
-      return res.status(404).json({ message: "No profile found" })
+        if (profiles.length === 0) {
+            return res.status(404).json({ message: "No profile found" })
+        }
+
+        res.status(200).json(profiles)
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server error" })
     }
-
-    res.status(200).json(profiles)
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server error" })
-  }
 }
 
 
@@ -144,24 +162,44 @@ export const updateProfile = async (req, res) => {
   try {
     const user = req.user
     if (!user) {
-      return res.status(404).json({ message: "No user found" })
+      return res.status(401).json({ message: "Unauthorized" })
     }
 
-    const updatedProfile = await Profile.findOneAndUpdate(
-      { user: user._id },
-      req.body,
-      { new: true }
-    )
-
-    if (!updatedProfile) {
+    const profile = await Profile.findOne({ user: user._id })
+    if (!profile) {
       return res.status(404).json({ message: "Profile not found" })
     }
 
+    const { phone, bio } = req.body
+
+    if (phone) profile.phone = phone
+    if (bio) profile.bio = bio
+    if(email) profile.email = email
+
+    // Handle image update if new images provided
+    if (req.files && req.files.length > 0) {
+      if (req.files.length > 2) {
+        return res.status(400).json({ message: "Maximum 2 images allowed" })
+      }
+
+      const uploadResults = await Promise.all(
+        req.files.map(file =>
+          cloudinary.uploader.upload(file.path, { folder: "profiles" })
+        )
+      )
+
+      profile.image = uploadResults.map(img => img.secure_url)
+    }
+
+    await profile.save()
+
     res.status(200).json({
       message: "Profile updated successfully",
-      profile: updatedProfile
+      profile
     })
   } catch (error) {
+    console.error(error)
     res.status(500).json({ message: "Internal Server error" })
   }
 }
+
