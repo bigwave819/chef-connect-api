@@ -8,7 +8,8 @@ import {
     createProfile,
     deleteProfile,
     updateProfile,
-    getProfile
+    getProfile,
+    getSpecificUser
  } from '../controller/user.controller.js';
  import ProtectedRoute from '../middleware/auth.middleware.js';
  import { upload } from '../middleware/multer.middleware.js';
@@ -16,10 +17,11 @@ import {
 
 router.post('/register', Register)
 router.post('/login', Login),
+router.get("/:id", getSpecificUser)
 
 router.use(ProtectedRoute);
 
-router.get('/:id', getProfile),
+router.get('/profile', getProfile),
 router.delete('/:id', deleteProfile),
 router.put('/update/:id', upload.array("images", 2), updateProfile),
 router.post('/profile/create', upload.array("images", 2) ,createProfile)

@@ -49,6 +49,19 @@ export const rejectUser = async () => {
             user: updateUser
         })
     } catch (error) {
-        res.status(500).json({ message: "Internal Server error" })
+        return res.status(500).json({ message: "Internal Server error" })
+    }
+}
+
+export const getAllUser = async () => {
+    try {
+        const user = await User.find()
+
+        if (user.length === 0) {
+            return res.status(404).json({ message: "No profile found" })
+        }
+        res.status(200).json(user)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server error" })
     }
 }

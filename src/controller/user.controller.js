@@ -7,7 +7,7 @@ import cloudinary from '../config/cloudinary.js'
 
 export const Register = async (req, res) => {
     try {
-        const { name, email, password } = req.body
+        const { name, email, password, role } = req.body
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: "All fields are required" })
@@ -23,6 +23,7 @@ export const Register = async (req, res) => {
         const user = await User.create({
             name,
             email,
+            role: role || "user",
             password: hashedPassword
         })
 
@@ -52,13 +53,32 @@ export const Login = async (req, res) => {
 
         const token = jwtToken(user._id)
 
+        const { password: _, ...safeUser } = user.toObject();
+
         res.status(200).json({
             message: "Login Success",
             user,
             token
         })
     } catch (error) {
-        res.status(500).json({ message: "Internal Server error" })
+        return res.status(500).json({ message: "Internal Server error" })
+    }
+}
+
+export const getSpecificUser = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const specificUser = await User.findById(id).select('-password');
+
+        if (!specificUser) {
+            return res.status(404).json({ message: "No such user found" });
+        }
+
+        return res.status(200).json(specificUser);
+
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server error" })
     }
 }
 
@@ -131,7 +151,7 @@ export const getProfile = async (_, res) => {
 
         res.status(200).json(profiles)
     } catch (error) {
-        res.status(500).json({ message: "Internal Server error" })
+        return res.status(500).json({ message: "Internal Server error" })
     }
 }
 
@@ -159,47 +179,47 @@ export const deleteProfile = async (req, res) => {
 }
 
 export const updateProfile = async (req, res) => {
-  try {
-    const user = req.user
-    if (!user) {
-      return res.status(401).json({ message: "Unauthorized" })
+    try {
+        const user = req.user
+        if (!user) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+
+        const profile = await Profile.findOne({ user: user._id })
+        if (!profile) {
+            return res.status(404).json({ message: "Profile not found" })
+        }
+
+        const { phone, bio } = req.body
+
+        if (phone) profile.phone = phone
+        if (bio) profile.bio = bio
+        if (email) profile.email = email
+
+        // Handle image update if new images provided
+        if (req.files && req.files.length > 0) {
+            if (req.files.length > 2) {
+                return res.status(400).json({ message: "Maximum 2 images allowed" })
+            }
+
+            const uploadResults = await Promise.all(
+                req.files.map(file =>
+                    cloudinary.uploader.upload(file.path, { folder: "profiles" })
+                )
+            )
+
+            profile.image = uploadResults.map(img => img.secure_url)
+        }
+
+        await profile.save()
+
+        res.status(200).json({
+            message: "Profile updated successfully",
+            profile
+        })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: "Internal Server error" })
     }
-
-    const profile = await Profile.findOne({ user: user._id })
-    if (!profile) {
-      return res.status(404).json({ message: "Profile not found" })
-    }
-
-    const { phone, bio } = req.body
-
-    if (phone) profile.phone = phone
-    if (bio) profile.bio = bio
-    if(email) profile.email = email
-
-    // Handle image update if new images provided
-    if (req.files && req.files.length > 0) {
-      if (req.files.length > 2) {
-        return res.status(400).json({ message: "Maximum 2 images allowed" })
-      }
-
-      const uploadResults = await Promise.all(
-        req.files.map(file =>
-          cloudinary.uploader.upload(file.path, { folder: "profiles" })
-        )
-      )
-
-      profile.image = uploadResults.map(img => img.secure_url)
-    }
-
-    await profile.save()
-
-    res.status(200).json({
-      message: "Profile updated successfully",
-      profile
-    })
-  } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: "Internal Server error" })
-  }
 }
 

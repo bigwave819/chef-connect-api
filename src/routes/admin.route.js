@@ -1,14 +1,15 @@
-import express from 'express'
+import express from 'express';
+const router = express.Router();
 
-const router = express.Router()
-import { adminOnly } from '../middleware/auth.middleware.js'
-import ProtectedRoute from '../middleware/auth.middleware.js'
-import { approveUser, rejectUser } from '../controller/admin.controller.js'
+import ProtectedRoute, { adminOnly } from '../middleware/auth.middleware.js';
+import { approveUser, getAllUser, rejectUser } from '../controller/admin.controller.js';
 
+// Apply middleware to all routes in this router
+router.use(ProtectedRoute, adminOnly);
 
-router.use(ProtectedRoute, adminOnly)
+// Admin routes
+router.put('/approve/:id', approveUser);
+router.get('/users', getAllUser);
+router.put('/reject/:id', rejectUser);
 
-router.put('/approve/:id', approveUser)
-router.put('/reject/:id', rejectUser)
-
-export default router
+export default router;
