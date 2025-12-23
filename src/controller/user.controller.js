@@ -84,64 +84,61 @@ export const getSpecificUser = async (req, res) => {
 
 
 export const createProfile = async (req, res) => {
-    try {
-        const user = req.user
-
-        if (!user) {
-            res.status(404).json({ message: "No user Found" })
-        }
-
-        const { image, phone, bio, email } = req.body
-
-        if (!image || !phone || !bio || !email) {
-            res.status(400).json({ message: 'All Fields are required' })
-        }
-
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: "At least one image is required" });
-        }
-
-        if (req.files.length > 2) {
-            return res.status(400).json({ message: "Maximum 2 images allowed" });
-        }
-
-        const uploaderPromises = req.files.map((file) => {
-            return cloudinary.uploader.upload(file.path, {
-                folder: 'profiles'
-            })
-        });
-
-        const uploadResults = await Promise.all(uploaderPromises)
-        const imageUrls = uploadResults.map((result) => result.secure_url)
-
-        const exists = await Profile.findOne({ user: user._id })
-        if (exists) {
-            return res.status(400).json({ message: "Profile already exists" })
-        }
-
-        const profile = new Profile({
-            user: user._id,
-            image: imageUrls,
-            phone,
-            bio,
-            email
-        })
-
-        user.profile = profile._id
-        await profile.save()
-
-        res.status(201).json({
-            message: 'Profile Created',
-            profile
-        })
-    } catch (error) {
-        res.status(500).json({
-            message: "Internal Server error"
-        })
+  try {
+    const user = req.user
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" })
     }
+
+    const { username, phone, bio, email } = req.body
+
+    if (!username || !phone || !bio || !email) {
+      return res.status(400).json({ message: "All fields are required" })
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "At least one image is required" })
+    }
+
+    if (req.files.length > 2) {
+      return res.status(400).json({ message: "Maximum 2 images allowed" })
+    }
+
+    const existing = await Profile.findOne({ user: user._id })
+    if (existing) {
+      return res.status(400).json({ message: "Profile already exists" })
+    }
+
+    const uploads = await Promise.all(
+      req.files.map(file =>
+        cloudinary.uploader.upload(file.path, { folder: "profiles" })
+      )
+    )
+
+    const imageUrls = uploads.map(img => img.secure_url)
+
+    const profile = await Profile.create({
+      user: user._id,
+      username,
+      phone,
+      bio,
+      email,
+      image: imageUrls,
+    })
+
+    await User.findByIdAndUpdate(user._id, { profile: profile._id })
+
+    return res.status(201).json({
+      message: "Profile created successfully",
+      profile,
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ message: "Internal Server Error" })
+  }
 }
 
-export const getProfile = async (_, res) => {
+export const getProfiles = async (_, res) => {
     try {
         const profiles = await Profile.find().populate("user", "name email role")
 
@@ -150,6 +147,36 @@ export const getProfile = async (_, res) => {
         }
 
         res.status(200).json(profiles)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server error" })
+    }
+}
+export const getMyProfile = async (req, res) => {
+    try {
+        // Find profile by the ID attached to the token
+        const profile = await Profile.findOne({ user: req.user._id });
+        
+        if (!profile) {
+            return res.status(404).json({ message: "Profile not found" });
+        }
+
+        res.status(200).json(profile);
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server error" });
+    }
+}
+
+export const getSpecificProfile = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const profile = await Profile.findById(id)
+
+        if (!profile) {
+            return res.status(404).json({ message: "profile not found" })
+        }
+
+        res.status(200).json(profile)
     } catch (error) {
         return res.status(500).json({ message: "Internal Server error" })
     }
@@ -190,7 +217,7 @@ export const updateProfile = async (req, res) => {
             return res.status(404).json({ message: "Profile not found" })
         }
 
-        const { phone, bio } = req.body
+        const { phone, bio, email } = req.body
 
         if (phone) profile.phone = phone
         if (bio) profile.bio = bio

@@ -4,10 +4,15 @@ import { ENV } from './src/config/env.js'
 import useRoutes from './src/routes/user.route.js'
 import cors from 'cors'
 import adminRoutes from './src/routes/admin.route.js'
+import cookieParser from 'cookie-parser';
 
 
 const app = express()
+
+
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser());
 app.use(cors({
   origin: "http://localhost:3000",
   credentials: true,

@@ -3,50 +3,28 @@ import User from "../models/user.model.js";
 
 const ProtectedRoute = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Look for token in cookies OR authorization header
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        message: "No token provided, authorization denied"
-      });
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
     }
-
-    const token = authHeader.split(" ")[1];
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id)
-      .select("-password")
-      .populate("profile");
+    const user = await User.findById(decoded.id).select("-password");
 
-    if (!user) {
-      return res.status(401).json({
-        message: "User not found, authorization denied"
-      });
-    }
+    if (!user) return res.status(401).json({ message: "User not found" });
 
     req.user = user;
-
     next();
   } catch (error) {
-    return res.status(401).json({
-      message: "Invalid or expired token"
-    });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
+};
+
+export const adminOnly = (req, res, next) => {
+  if (req.user?.role !== "admin") return res.status(403).json({ message: "Admin only" });
+  next();
 };
 
 export default ProtectedRoute;
-
-
-export const adminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized - user not found" });
-  }
-
-  if (req.user.role !== "admin") {
-    return res.status(403).json({
-      message: "Forbidden - admin access only",
-    });
-  }
-
-  next();
-};
