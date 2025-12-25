@@ -51,13 +51,13 @@ export const Login = async (req, res) => {
             return res.status(400).json({ message: "Invalid credentials" })
         }
 
-        const token = jwtToken(user._id)
+        const token = jwtToken(user._id.toString())
 
         const { password: _, ...safeUser } = user.toObject();
 
         res.status(200).json({
             message: "Login Success",
-            user,
+            user: safeUser,
             token
         })
     } catch (error) {
@@ -170,7 +170,7 @@ export const getSpecificProfile = async (req, res) => {
     try {
         const { id } = req.params
 
-        const profile = await Profile.findById(id)
+        const profile = await Profile.findById(id).populate("user", "_id")
 
         if (!profile) {
             return res.status(404).json({ message: "profile not found" })
@@ -217,9 +217,10 @@ export const updateProfile = async (req, res) => {
             return res.status(404).json({ message: "Profile not found" })
         }
 
-        const { phone, bio, email } = req.body
+        const { phone, bio, email, username } = req.body
 
         if (phone) profile.phone = phone
+        if (username) profile.username = username
         if (bio) profile.bio = bio
         if (email) profile.email = email
 

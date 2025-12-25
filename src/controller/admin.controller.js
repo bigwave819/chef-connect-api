@@ -14,32 +14,6 @@ export const approveUser = async (req, res) => {
     }
 }
 
-export const rejectUser = async () => {
-    try {
-        const user = req.user
-        if (!user) {
-            return res.status(404).json({ message: "No user found" })
-        }
-
-        const updateUser = await User.findOneAndUpdate(
-            { user: user._id },
-            req.body,
-            { new: true }
-        )
-
-        if (!updateUser) {
-            return res.status(404).json({ message: "User not found" })
-        }
-
-        res.status(200).json({
-            message: "Account is Visible now",
-            user: updateUser
-        })
-    } catch (error) {
-        return res.status(500).json({ message: "Internal Server error" })
-    }
-}
-
 export const getAllUser = async (req, res) => {
     try {
         const users = await User.find().select("-password");
@@ -50,3 +24,37 @@ export const getAllUser = async (req, res) => {
         res.status(500).json({ message: "Internal Server error" });
     }
 }
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const approvedUsers = await User.countDocuments({ isVisible: true });
+    const unapprovedUsers = await User.countDocuments({ isVisible: false });
+
+    // Count users per role
+    const rolesAggregation = await User.aggregate([
+      { 
+        $group: { 
+          _id: "$role", 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    const rolesCount = rolesAggregation.reduce((acc, role) => {
+      acc[role._id] = role.count;
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      totalUsers,
+      approvedUsers,
+      unapprovedUsers,
+      rolesCount
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
+  }
+};

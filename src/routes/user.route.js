@@ -26,6 +26,6 @@ router.use(ProtectedRoute);
 router.get('/profile', getMyProfile);
 router.post('/profile/create', upload.array("image", 2), createProfile);
 router.put('/update', upload.array("image", 2), updateProfile);
-router.delete('/delete-account', deleteProfile);
+router.delete('/delete-account/:id', deleteProfile);
 
 export default router;
