@@ -1,9 +1,15 @@
-import jwt from 'jsonwebtoken'
-import { ENV } from '../config/env.js'
+import jwt from "jsonwebtoken";
+import { ENV } from "../config/env.js";
 
-const jwtToken = (userId) => {
-    const id = userId.toString();
-    return jwt.sign({ id }, ENV.JWT_SECRET, { expiresIn: '5d' })
-}
+const jwtToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id.toString(),
+      role: user.role,
+    },
+    ENV.JWT_SECRET,
+    { expiresIn: "5d" }
+  );
+};
 
-export default jwtToken
+export default jwtToken;

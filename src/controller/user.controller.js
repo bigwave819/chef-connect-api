@@ -34,36 +34,38 @@ export const Register = async (req, res) => {
 }
 
 export const Login = async (req, res) => {
-    try {
-        const { email, password } = req.body
+  try {
+    const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: "All fields are required" })
-        }
-
-        const user = await User.findOne({ email })
-        if (!user) {
-            return res.status(404).json({ message: "No such user" })
-        }
-
-        const matchPassword = await bcrypt.compare(password, user.password)
-        if (!matchPassword) {
-            return res.status(400).json({ message: "Invalid credentials" })
-        }
-
-        const token = jwtToken(user._id.toString())
-
-        const { password: _, ...safeUser } = user.toObject();
-
-        res.status(200).json({
-            message: "Login Success",
-            user: safeUser,
-            token
-        })
-    } catch (error) {
-        return res.status(500).json({ message: "Internal Server error" })
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
     }
-}
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No such user" });
+    }
+
+    const matchPassword = await bcrypt.compare(password, user.password);
+    if (!matchPassword) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // ✅ pass full user, not just id
+    const token = jwtToken(user);
+
+    const { password: _, ...safeUser } = user.toObject();
+
+    res.status(200).json({
+      message: "Login Success",
+      user: safeUser,
+      token,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server error" });
+  }
+};
+
 
 export const getSpecificUser = async (req, res) => {
     try {
@@ -170,7 +172,7 @@ export const getSpecificProfile = async (req, res) => {
     try {
         const { id } = req.params
 
-        const profile = await Profile.findById(id).populate("user", "_id")
+        const profile = await Profile.findById(id).populate("user", "_id role" )
 
         if (!profile) {
             return res.status(404).json({ message: "profile not found" })
